@@ -11,6 +11,7 @@ type AuthContextType = {
   login: (id: string, password: string) => Promise<void>
   signup: (id: string, password: string) => Promise<void>
   logout: () => void
+  recordResult: (score: number) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -64,8 +65,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => setUser(null)
 
+  const recordResult = async (score: number) => {
+    if (!user) return
+    const users = readUsers()
+    const entry = users[user.id] || { password: '', bestScore: 0, totalPlays: 0 }
+    // Treat bestScore as an accumulated total: add this round's score
+    entry.totalPlays = (entry.totalPlays ?? 0) + 1
+    entry.bestScore = (entry.bestScore ?? 0) + score
+    users[user.id] = entry
+    writeUsers(users)
+    setUser({ id: user.id, bestScore: entry.bestScore, totalPlays: entry.totalPlays })
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, recordResult }}>
       {children}
     </AuthContext.Provider>
   )
