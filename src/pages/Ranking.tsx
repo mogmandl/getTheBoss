@@ -1,72 +1,76 @@
 import { useEffect, useState } from 'react'
-import LeaderboardRow from '../components/ui/LeaderboardRow.tsx'
-import { getUsers } from '../lib/storage'
-
-type Row = {
-  id: string
-  bestScore: number
-  bestCompare: number
-  finalScore: number
-  rank: number
-}
-
+import { getAllUsersRanking, type RankingUser } from '../lib/firebaseRanking'
+import { useTranslation } from 'react-i18next'
 
 export default function Ranking() {
-  const [rows, setRows] = useState<Row[]>([])
+  const [rows, setRows] = useState<RankingUser[]>([])
+  const [loading, setLoading] = useState(true)
+  const { t } = useTranslation()
 
   useEffect(() => {
-    try {
-      const users = getUsers()
-      const entries = Object.keys(users).map((id) => {
-        const entry = users[id] || {}
-        const bestScore = Number(entry.bestScore ?? 0)
-        const bestCompare = Number(entry.bestCompare ?? 0)
-        const finalScore = bestScore * bestCompare
-        return { id, bestScore, bestCompare, finalScore }
-      })
-      entries.sort((a, b) => b.finalScore - a.finalScore)
-      // assign competition-style ranks (1,1,3 for ties)
-      let prevFinal: number | null = null
-      let prevRank = 0
-      const withRank: Row[] = entries.map((e, idx) => {
-        const rank = e.finalScore === prevFinal ? prevRank : idx + 1
-        prevFinal = e.finalScore
-        prevRank = rank
-        return { id: e.id, bestScore: e.bestScore, bestCompare: e.bestCompare, finalScore: e.finalScore, rank }
-      })
-      setRows(withRank)
-    } catch (err) {
-      console.error('Failed to load ranking', err)
-      setRows([])
+    const loadRanking = async () => {
+      try {
+        setLoading(true)
+        const ranking = await getAllUsersRanking()
+        setRows(ranking)
+      } catch (err) {
+        console.error('Failed to load ranking', err)
+        setRows([])
+      } finally {
+        setLoading(false)
+      }
     }
+
+    loadRanking()
   }, [])
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>랭킹</h1>
-      <p>최종 점수 = 정확히 맞추기 누적 점수 × 비교 게임 최고 점수</p>
+    <div className="min-h-screen bg-white">
+      <main className="max-w-4xl mx-auto px-6 py-20">
+        <h1 className="text-4xl font-bold mb-3">{t('ranking.title')}</h1>
+        <p className="text-gray-600 mb-12">
+          {t('ranking.formula')}
+        </p>
 
-      <div style={{ marginTop: 12 }}>
-        {rows.length === 0 && <div>등록된 플레이어가 없습니다.</div>}
-        {rows.length > 0 && (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', padding: 8 }}>순위</th>
-                <th style={{ textAlign: 'left', padding: 8 }}>아이디</th>
-                <th style={{ textAlign: 'right', padding: 8 }}>정확히맞추기</th>
-                <th style={{ textAlign: 'right', padding: 8 }}>비교최고</th>
-                <th style={{ textAlign: 'right', padding: 8 }}>최종점수</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <LeaderboardRow key={r.id} id={r.id} rank={r.rank} bestScore={r.bestScore} bestCompare={r.bestCompare} finalScore={r.finalScore} />
-              ))}
-            </tbody>
-          </table>
+        {loading && (
+          <div className="border-2 border-gray-300 p-12 text-center text-gray-600">
+            {t('common.loading')}
+          </div>
         )}
-      </div>
+
+        {!loading && rows.length === 0 && (
+          <div className="border-2 border-gray-300 p-12 text-center text-gray-600">
+            {t('ranking.noPlayers')}
+          </div>
+        )}
+
+        {!loading && rows.length > 0 && (
+          <div className="border-2 border-gray-300">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b-2 border-gray-300">
+                  <th className="text-left p-4 font-bold">{t('ranking.rank')}</th>
+                  <th className="text-left p-4 font-bold">{t('common.email')}</th>
+                  <th className="text-right p-4 font-bold">{t('ranking.exactScoreColumn')}</th>
+                  <th className="text-right p-4 font-bold">{t('ranking.compareScoreColumn')}</th>
+                  <th className="text-right p-4 font-bold">{t('ranking.finalScoreColumn')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={row.id} className={index < rows.length - 1 ? 'border-b border-gray-300' : ''}>
+                    <td className="p-4 font-bold text-blue-600">{row.rank}</td>
+                    <td className="p-4">{row.email}</td>
+                    <td className="p-4 text-right">{row.bestScore.toLocaleString()}</td>
+                    <td className="p-4 text-right">{row.bestCompare.toLocaleString()}</td>
+                    <td className="p-4 text-right font-bold">{row.finalScore.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </main>
     </div>
   )
 }

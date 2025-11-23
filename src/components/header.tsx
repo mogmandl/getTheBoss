@@ -1,68 +1,60 @@
-import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
-import NavCenter from './NavCenter'
-import MobileDropdown from './MobileDropdown'
-import ProfileMenuButton from './ProfileMenuButton'
+import { useAuth } from '../contexts/AuthContextFirebase'
+import { useTranslation } from 'react-i18next'
+import Logo from './Logo'
+import LanguageSwitcher from './LanguageSwitcher'
 
 export default function Header() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const { t } = useTranslation()
 
-  const headerRef = useRef<HTMLDivElement | null>(null)
-
-  const [mobileOpen, setMobileOpen] = useState(false)
-
-  const onProfileClick = () => {
-    if (user) {
-      navigate('/profile')
-      setMobileOpen(false)
-      return
-    }
+  const handleLogout = async () => {
+    await logout()
     navigate('/signin')
-    setMobileOpen(false)
   }
-
-  const onHomeClick = () => {
-    navigate('/')
-    setMobileOpen(false)
-  }
-
-  const onRankingClick = () => {
-    navigate('/ranking')
-    setMobileOpen(false)
-  }
-
-  useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (!mobileOpen) return
-      const target = e.target as Node
-      if (headerRef.current && !headerRef.current.contains(target)) {
-        setMobileOpen(false)
-      }
-    }
-
-    function onResize() {
-      if (window.innerWidth >= 768) setMobileOpen(false)
-    }
-
-    document.addEventListener('click', onDocClick)
-    window.addEventListener('resize', onResize)
-    return () => {
-      document.removeEventListener('click', onDocClick)
-      window.removeEventListener('resize', onResize)
-    }
-  }, [mobileOpen])
 
   return (
-    <div ref={headerRef} className="relative flex items-center justify-between text-2xl bg-gray-200 p-5">
-      <div className="flex-none">로고입니다.</div>
+    <header className="border-b border-gray-300">
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          {/* 로고 */}
+          <div className="cursor-pointer" onClick={() => navigate('/')}>
+            <Logo size="sm" />
+          </div>
 
-      <NavCenter onHomeClick={onHomeClick} onRankingClick={onRankingClick} />
-
-      <MobileDropdown mobileOpen={mobileOpen} onHomeClick={onHomeClick} onRankingClick={onRankingClick} />
-
-      <ProfileMenuButton user={user} onProfileClick={onProfileClick} onToggleMenu={() => setMobileOpen(prev => !prev)} />
-    </div>
+          {/* 네비게이션 */}
+          <nav className="flex items-center gap-6">
+            {user ? (
+              <>
+                <button onClick={() => navigate('/game/exact')} className="hover:text-blue-600">
+                  {t('header.exactGame')}
+                </button>
+                <button onClick={() => navigate('/game/compare')} className="hover:text-blue-600">
+                  {t('header.compareGame')}
+                </button>
+                <button onClick={() => navigate('/ranking')} className="hover:text-blue-600">
+                  {t('common.ranking')}
+                </button>
+                <button onClick={() => navigate('/profile')} className="hover:text-blue-600">
+                  {t('common.profile')}
+                </button>
+                <LanguageSwitcher />
+                <button onClick={handleLogout} className="border border-gray-300 px-4 py-1 hover:bg-gray-100">
+                  {t('common.logout')}
+                </button>
+              </>
+            ) : (
+              <>
+                <LanguageSwitcher />
+                <button onClick={() => navigate('/signin')} className="border border-blue-600 text-blue-600 px-4 py-1 hover:bg-blue-50">
+                  {t('common.login')}
+                </button>
+              </>
+            )}
+          </nav>
+        </div>
+      </div>
+    </header>
   )
 }

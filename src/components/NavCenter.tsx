@@ -1,5 +1,3 @@
-import React from 'react'
-
 type Props = {
   onHomeClick: () => void
   onRankingClick: () => void

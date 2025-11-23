@@ -1,4 +1,4 @@
-import React from 'react'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   companyName: string
@@ -8,16 +8,22 @@ type Props = {
 }
 
 export default function QuestionPanel({ companyName, currentRound, maxRounds, cumulativeScore }: Props) {
-  return (
-    <div>
-      <h1>회사 직원 수 맞추기</h1>
-      <p>회사 이름: {companyName}</p>
+  const { t } = useTranslation()
 
-      <div style={{ marginTop: 8 }}>
-        <strong>현재 라운드:</strong> {currentRound} / {maxRounds}
-        <span style={{ marginLeft: 12 }}>
-          <strong>누적 점수:</strong> {cumulativeScore}
-        </span>
+  return (
+    <div className="border-2 border-gray-300 p-8 mb-6">
+      <h1 className="text-3xl font-bold mb-4">{companyName}</h1>
+      <p className="text-gray-600 mb-4">{t('gameExact.question')}</p>
+
+      <div className="flex justify-between items-center border-t border-gray-300 pt-4">
+        <div>
+          <span className="text-gray-600">{t('gameExact.round')}:</span>
+          <span className="font-bold ml-2">{currentRound} / {maxRounds}</span>
+        </div>
+        <div>
+          <span className="text-gray-600">{t('gameExact.cumulativeScore')}:</span>
+          <span className="font-bold text-blue-600 ml-2">{cumulativeScore.toLocaleString()}</span>
+        </div>
       </div>
     </div>
   )
