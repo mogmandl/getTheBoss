@@ -1,74 +1,139 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import ScoreCard from '../components/ui/ScoreCard.tsx'
+import { useAuth } from '../contexts/AuthContextFirebase'
+import { useTranslation } from 'react-i18next'
 
 export default function Profile() {
-  const { user, logout } = useAuth()
+  const { user, logout, deleteUserAccount } = useAuth()
   const navigate = useNavigate()
+  const { t } = useTranslation()
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const [rank, setRank] = useState<number | null>(null)
-  const [totalPlayers, setTotalPlayers] = useState(0)
-
-  const onLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/')
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!showDeleteConfirm) {
+      setShowDeleteConfirm(true)
+      return
+    }
+
+    try {
+      setIsDeleting(true)
+      await deleteUserAccount()
+      alert(t('profile.deleteSuccess'))
+      navigate('/')
+    } catch (error) {
+      alert(t('profile.deleteError'))
+      setIsDeleting(false)
+    }
   }
 
   if (!user) {
     return (
-      <div className="p-6 max-w-3xl mx-auto">
-        <h1 className="text-2xl mb-4">내 정보</h1>
-        <div className="p-4 border rounded">
-          <p className="mb-4">프로필은 회원 전용 기능입니다. 프로필을 보시려면 로그인을 해주세요.</p>
-          <div>
-            <button onClick={() => navigate('/signin')} className="px-3 py-1 bg-blue-500 text-white rounded">로그인 / 회원가입</button>
-            <button onClick={() => navigate('/')} className="ml-2 px-3 py-1 border rounded">홈으로</button>
-          </div>
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
+        <div className="max-w-md w-full border-2 border-gray-300 p-12 text-center">
+          <h1 className="text-2xl font-bold mb-4">{t('profile.title')}</h1>
+          <p className="text-gray-600 mb-6">{t('profile.loginRequired')}</p>
+          <button
+            onClick={() => navigate('/signin')}
+            className="border-2 border-blue-600 text-blue-600 px-6 py-2 hover:bg-blue-50"
+          >
+            {t('common.login')}
+          </button>
         </div>
       </div>
     )
   }
 
-  useEffect(() => {
-    // compute user's rank based on finalScore = bestScore * bestCompare
-    if (!user) return
-    try {
-      const raw = localStorage.getItem('app_users')
-      const users = raw ? JSON.parse(raw) : {}
-      const list = Object.keys(users).map((id) => {
-        const e = users[id] || {}
-        const bs = Number(e.bestScore ?? 0)
-        const bc = Number(e.bestCompare ?? 0)
-        return { id, final: bs * bc }
-      })
-      list.sort((a, b) => b.final - a.final)
-      const idx = list.findIndex(r => r.id === user.id)
-      setTotalPlayers(list.length)
-      setRank(idx >= 0 ? idx + 1 : null)
-    } catch (err) {
-      setRank(null)
-      setTotalPlayers(0)
-    }
-  }, [user])
+  const finalScore = (user.bestScore || 0) * (user.bestCompare || 0)
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl mb-4">내 정보</h1>
+    <div className="min-h-screen bg-white">
+      <main className="max-w-4xl mx-auto px-6 py-20">
+        <h1 className="text-4xl font-bold mb-12">{t('profile.title')}</h1>
 
-      <div className="mb-6">
-        <div className="text-lg">아이디: <strong>{user?.id ?? '게스트'}</strong></div>
-        <button onClick={onLogout} className="mt-2 px-3 py-1 bg-red-500 text-white rounded">로그아웃</button>
-      </div>
+        {/* 사용자 정보 */}
+        <div className="border-2 border-gray-300 p-8 mb-8">
+          <div className="mb-6">
+            <div className="text-sm text-gray-600 mb-1">{t('common.email')}</div>
+            <div className="text-2xl font-bold">{user.email}</div>
+          </div>
+          <div className="flex gap-4">
+            <button
+              onClick={handleLogout}
+              className="border border-gray-300 px-6 py-2 hover:bg-gray-100"
+            >
+              {t('common.logout')}
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+              className="border border-red-600 text-red-600 px-6 py-2 hover:bg-red-50 disabled:opacity-50"
+            >
+              {isDeleting ? t('common.loading') : t('profile.deleteAccount')}
+            </button>
+          </div>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <ScoreCard title="정확히 맞추기 누적 점수" value={user?.bestScore ?? 0} />
-        <ScoreCard title="비교 게임 최고 점수" value={user?.bestCompare ?? 0} />
-        <ScoreCard title="등수" value={rank ? `${rank} / ${totalPlayers}` : '—'} />
-        <ScoreCard title="총 판수" value={user?.totalPlays ?? 0} />
-      </div>
+        {/* 회원탈퇴 확인 */}
+        {showDeleteConfirm && (
+          <div className="border-2 border-red-600 bg-red-50 p-8 mb-8">
+            <p className="text-red-600 font-bold mb-4 whitespace-pre-line">{t('profile.deleteConfirm')}</p>
+            <div className="flex gap-4">
+              <button
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+                className="border-2 border-red-600 bg-red-600 text-white px-6 py-2 hover:bg-red-700 disabled:opacity-50"
+              >
+                {t('common.confirm')}
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="border-2 border-gray-300 px-6 py-2 hover:bg-gray-100"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          </div>
+        )}
 
-      {/* 랭킹 박스는 프로필에서 제거됨 (요청에 따라) */}
+        {/* 점수 통계 */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="border border-gray-300 p-8">
+            <div className="text-sm text-gray-600 mb-2">{t('profile.exactScore')}</div>
+            <div className="text-4xl font-bold text-blue-600">{user.bestScore || 0}</div>
+          </div>
+
+          <div className="border border-gray-300 p-8">
+            <div className="text-sm text-gray-600 mb-2">{t('profile.compareScore')}</div>
+            <div className="text-4xl font-bold text-blue-600">{user.bestCompare || 0}</div>
+          </div>
+
+          <div className="border border-gray-300 p-8">
+            <div className="text-sm text-gray-600 mb-2">{t('profile.totalPlays')}</div>
+            <div className="text-4xl font-bold text-blue-600">{user.totalPlays || 0}</div>
+          </div>
+
+          <div className="border border-gray-300 p-8">
+            <div className="text-sm text-gray-600 mb-2">{t('profile.finalScore')}</div>
+            <div className="text-4xl font-bold text-blue-600">{finalScore.toLocaleString()}</div>
+          </div>
+        </div>
+
+        {/* 랭킹 보기 버튼 */}
+        <div className="border-2 border-gray-300 p-8 text-center">
+          <button
+            onClick={() => navigate('/ranking')}
+            className="border-2 border-blue-600 text-blue-600 px-8 py-2 hover:bg-blue-50"
+          >
+            {t('home.viewRanking')}
+          </button>
+        </div>
+      </main>
     </div>
   )
 }
