@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react'
 import companies from '../data/companies'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import QuestionPanel from '../components/gameExact/QuestionPanel.tsx'
+import GuessForm from '../components/gameExact/GuessForm.tsx'
 
 export default function GameExact() {
   const [companyIndex, setCompanyIndex] = useState<number | null>(null)
@@ -97,23 +99,11 @@ export default function GameExact() {
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>회사 직원 수 맞추기</h1>
-      <p>회사 이름: {company.name}</p>
+      <QuestionPanel companyName={company.name} currentRound={currentRound} maxRounds={MAX_ROUNDS} cumulativeScore={cumulativeScore} />
 
-      <div style={{ marginTop: 8 }}>
-        <strong>현재 라운드:</strong> {currentRound} / {MAX_ROUNDS}
-        <span style={{ marginLeft: 12 }}>
-          <strong>누적 점수:</strong> {cumulativeScore}
-        </span>
+      <div style={{ marginTop: 12 }}>
+        <GuessForm guess={guess} setGuess={setGuess} onSubmit={onSubmit} inputRef={inputRef} disabled={finished} />
       </div>
-
-      <form onSubmit={onSubmit}>
-        <label>
-          직원 수 입력:
-          <input ref={inputRef} value={guess} onChange={e => setGuess(e.target.value)} />
-        </label>
-        <button type="submit">제출</button>
-      </form>
 
       {result && <div>{result}</div>}
       {gainedScore !== null && (
